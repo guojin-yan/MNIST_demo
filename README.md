@@ -132,8 +132,6 @@ Pytorch 1.12.1+cu113
 
 Python 3.9
 
-
-
 ### 4.2 定义数据加载器
 
 新建一个数据加载器文件``dataloader.py``，用于加载训练数据，后续模型训练时通过数据加载器按批次加载训练集。
@@ -200,7 +198,7 @@ def test_loader(self):
     return test_load
 ```
 
-### 4.3 定义网络
+### 4.3 定义网络（net,py）
 
 接下来定义训练网络，要实现后面我们的网络能够很好的识别我们的手写数字，在此处就要定义一个比较好的网络，下面的网络是我参考的网上一些人所做的模型定义的。
 
@@ -241,8 +239,8 @@ class Net(nn.Module):
         x = F.relu(x)
         # 二次卷积运算
         x = self.conv2(x)
-        x = self.conv2_drop(x, 2)
-        x = F.max_pool2d(x)
+        x = self.conv2_drop(x)
+        x = F.max_pool2d(x,2)
         x = F.relu(x)
         # 设置数据长度
         x = x.view(-1, 320)
@@ -256,5 +254,237 @@ class Net(nn.Module):
         return F.log_softmax(x) 
 ```
 
-### 4.4 定义训练器
+以下模型结构图为训练完成的模型转为ONNX模型的结构图。
 
+**![image-20220816213329067](E:\Git_space\手写数字识别\image\image-20220816213329067.png)**
+
+
+
+### 4.4 定义训练器(trainer.py)
+
+训练器主要是将构建好的模型以及训练集进行训练，实现对训练过程数据的记录以及训练模型的保存。在此处我们将其封装到``trainer.py``文件中``Trainer()``类中。
+
+首先导入以下模块:
+
+```python
+from torch.utils.tensorboard import SummaryWriter
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import time
+```
+
+``tensorboard``是一个外部插件，用于保存训练过程的数据并进行可视化显示，在使用时需要自行安装，他不在Pytorch软件包中。
+
+接下来就是创建``Trainer()``类，在该类的初始化方法中，我们主要实现了对一些成员变量进行赋值，并且初始化后面训练的相关成员变量。
+
+```python
+class Trainer():
+    def __init__(self, network, learning_rate, log_interval):
+        # 初始化网络
+        self.network = network
+        # 初始化学习率
+        self.learning_rate = learning_rate
+        # 初始化优化器
+        self.optimizer = optim.SGD(network.parameters(), lr=learning_rate)
+        # 初始化日志打印间隔
+        self.log_interval = log_interval
+        # 初始化损失函数
+        self.loss_fn = nn.CrossEntropyLoss()
+        # 当CUDA可用时，开启CUDA加速
+        if torch.cuda.is_available():
+              self.loss_fn =   self.loss_fn.cuda()
+        # 初始化tensorboard日志保存接口
+        self.writer = SummaryWriter("Python/logs_train")
+        # 初始准确率
+        self.accuracy = 0
+```
+
+下面为模型训练方法，主要实现模型训练、模型测试、日志保存与打印、模型保存与打印等功能。具体过程可以根据代码解释进行理解。
+
+```python
+    def tarin(self, epoch, train_loader, test_loader):
+        # 训练和测试的总步数
+        total_train_step = 0
+        total_test_step = 0
+        # 获取当前时间
+        now =  time.localtime()
+        # 创建日志
+        log_text=open("Python/logs_train/{}.txt".format(time.strftime("%Y_%m_%d_%H_%M", now)),mode='w')
+        log_text.write("模型训练时间：{}".format(time.strftime("%Y-%m-%d %H:%M:%S", now)))
+        log_text.write('\r\n')
+        for i in range(epoch):
+            # 模型训练
+            print("--------第{}轮训练开始--------".format(i))
+            log_text.writelines("--------第{}轮训练开始--------".format(i))
+            log_text.write('\r\n')
+            self.network.train()
+            '''
+                模型训练步骤：
+                1.在DataLoader中读取bath_size个数据，包括模型输入和目标输出
+                2.带入到网络中计算
+                3.带入损失函数，计算损失
+                4.模型反向传播
+                5.执行单个优化步骤
+                6.重复上面过程，反复训练
+            '''
+            for batch_idx, (data, target) in enumerate(train_loader):
+                self.optimizer.zero_grad()
+                # 当可以使用CUDA加速时，将data、target转为CUDA格式
+                if torch.cuda.is_available():
+                    data = data.cuda()
+                    target = target.cuda()
+                # 带入网络计算，前向传播
+                output = self.network(data)
+                # 带入损失函数计算
+                loss = self.loss_fn(output,target)
+                # 反向传播
+                loss.backward()
+                # 执行单个优化步骤
+                self.optimizer.step()
+                total_train_step +=1
+                if batch_idx % self.log_interval == 0:
+                    # 打印训练过程日志
+                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        i, batch_idx * len(data), len(train_loader.dataset),
+                            100. * batch_idx / len(train_loader), loss.item()))
+                    # 写入txt日志文件
+                    log_text.writelines('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        i, batch_idx * len(data), len(train_loader.dataset),
+                            100. * batch_idx / len(train_loader), loss.item()))
+                    log_text.write('\r\n')
+                    # 将训练结果写入tensorboard日志中
+                    self.writer.add_scalar("train_loss",loss.item(),total_train_step)
+            #模型测试
+            print("--------第{}轮测试开始--------".format(i))
+            log_text.write("--------第{}轮测试开始--------".format(i))
+            log_text.write('\r\n')
+            total_test_loss = 0
+            total_accuracy = 0
+            accuracy = 0
+            with torch.no_grad():# with以下的代码不会更改
+                for batch_idx, (data, target) in enumerate(test_loader):
+                    # 当可以使用CUDA加速时，将data、target转为CUDA格式
+                    if torch.cuda.is_available():
+                        data = data.cuda()
+                        target = target.cuda()
+                    # 带入模型计算
+                    outputs = self.network(data)
+                    # 带入损失函数计算下损失
+                    loss = self.loss_fn(outputs,target)
+                    # 计算总损失
+                    total_test_loss = total_test_loss + loss.item()
+                    # 计算准确率
+                    accuracy = (outputs.argmax(1) == target).sum()
+                    # 总的准确率
+                    total_accuracy = total_accuracy + accuracy
+            accuracy = total_accuracy / len(test_loader.dataset)
+            # 保存结果最好的模型
+            if(self.accuracy < accuracy):
+                torch.save(self.network, "Python/best_model.pth".format(i))
+                print("best_model.pth 保存成功")
+                log_text.writelines("best_model.pth 保存成功")
+                log_text.write('\r\n')
+            self.accuracy = accuracy
+
+            print("整体测试集上的Loss：{}".format(total_test_loss))
+            print("整体测试集上的正确率：{}".format(self.accuracy))
+            log_text.writelines("整体测试集上的Loss：{}".format(total_test_loss))
+            log_text.write('\r\n')
+            log_text.writelines("整体测试集上的正确率：{}".format(self.accuracy))
+            log_text.write('\r\n')
+            self.writer.add_scalar("test_loss",total_test_loss,total_test_step)
+            self.writer.add_scalar("test_accuracy",total_accuracy / len(test_loader.dataset),total_test_step)
+            total_test_step = total_test_step + 1
+
+            # 保存该轮模型
+            torch.save(self.network, "Python/model_{}.pth".format(i))
+            # torch.save(self.optimizer.state_dict(), "optimizer_{}.pth".format(i))
+            print("第{}轮模型保存成功".format(i+1))
+            log_text.writelines("第{}轮模型保存成功".format(i)) 
+        print("----------模型训练结束-----------")     
+        log_text.writelines("----------模型训练结束-----------")
+        log_text.write('\r\n')
+        log_text.close()
+```
+
+### 4.5 模型训练（main_MNIST.py）
+
+前面我们已经定义好了训练所使用的相关模块，下面我们我们调用相应的依赖项以及文件进行模型的训练。
+
+首先导入相关的模块：
+
+```py
+import torch
+import matplotlib.pyplot as plt
+```
+
+接下来引入我们前面构建的类：
+
+```python
+from dataloader import Dataloader
+from net import Net
+from trainer import Trainer
+```
+
+然后定义模型训练的相关设置参数:
+
+```python
+'''---------设置相关训练参数---------'''
+n_epochs = 1             # 训练轮次
+batch_size_train = 8   # 训练集batchSize
+batch_size_test = 8  # 测试集batchSize
+learning_rate = 0.01    # 学习率
+momentum = 0.5          # 动量、冲量
+log_interval = 100       # 日志打印间隔次数
+random_seed = 1         # 随机种子数
+```
+
+读取本地训练集以及测试集：
+
+```python
+'''---------初始化训练集和测试集---------'''
+# CPU和GPU设置随机种子
+torch.manual_seed(random_seed)
+# 初始化数据加载
+dataloader = Dataloader(batch_size_train = batch_size_train, batch_size_test = batch_size_test)
+# 定义训练集加载器
+train_loader = dataloader.train_loader()
+# 定义测试集加载器
+test_loader = dataloader.test_loader()
+```
+
+我们可以读取数据集中的几张图片，来查看我们所要使用的数据集：
+
+```python
+'''---------查看数据集---------'''
+examples = enumerate(test_loader)
+batch_idx, (example_data, example_targets) = next(examples)
+
+fig = plt.figure()
+print(example_data[0][0].size())
+for i in range(6):
+    plt.subplot(2,3,i+1)
+    plt.tight_layout()
+    plt.imshow(example_data[i][0], cmap='gray', interpolation='none')
+    plt.title("Ground Truth: {}".format(example_targets[i]))
+    plt.xticks([])
+    plt.yticks([])
+plt.show()
+```
+
+最后我们定义网络，并将其网络训练器中进行训练。
+
+```python
+# 定义网络
+network = Net()
+# 设置工作模式
+if torch.cuda.is_available():
+    network = network.cuda()
+# 加载模型训练器
+trainer = Trainer(network, learning_rate, log_interval)
+# 开始模型训练
+trainer.tarin(epoch = n_epochs, train_loader = train_loader, test_loader = test_loader)
+```
+
+模型训练完后，模型文件保存到``	Python``文件夹下，日志文件保存到``	Python/logs_train``文件夹下。

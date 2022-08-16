@@ -22,7 +22,7 @@ class Trainer():
         if torch.cuda.is_available():
               self.loss_fn =   self.loss_fn.cuda()
         # 初始化tensorboard日志保存接口
-        self.writer = SummaryWriter("logs_train")
+        self.writer = SummaryWriter("Python/logs_train")
         # 初始准确率
         self.accuracy = 0
 
@@ -34,10 +34,10 @@ class Trainer():
         # 获取当前时间
         now =  time.localtime()
         # 创建日志
-        log_text=open("{}.txt".format(time.strftime("%Y_%m_%d_%H_%M", now)),mode='w')
+        log_text=open("Python/logs_train/{}.txt".format(time.strftime("%Y_%m_%d_%H_%M", now)),mode='w')
         log_text.write("模型训练时间：{}".format(time.strftime("%Y-%m-%d %H:%M:%S", now)))
         log_text.write('\r\n')
-        for i in range(epoch+1):
+        for i in range(epoch):
             # 模型训练
             print("--------第{}轮训练开始--------".format(i))
             log_text.writelines("--------第{}轮训练开始--------".format(i))
@@ -105,7 +105,7 @@ class Trainer():
             accuracy = total_accuracy / len(test_loader.dataset)
             # 保存结果最好的模型
             if(self.accuracy < accuracy):
-                torch.save(self.network, "best_model.pth".format(i))
+                torch.save(self.network, "Python/best_model.pth".format(i))
                 print("best_model.pth 保存成功")
                 log_text.writelines("best_model.pth 保存成功")
                 log_text.write('\r\n')
@@ -122,7 +122,7 @@ class Trainer():
             total_test_step = total_test_step + 1
 
             # 保存该轮模型
-            torch.save(self.network, "model_{}.pth".format(i))
+            torch.save(self.network, "Python/model_{}.pth".format(i))
             # torch.save(self.optimizer.state_dict(), "optimizer_{}.pth".format(i))
             print("第{}轮模型保存成功".format(i+1))
             log_text.writelines("第{}轮模型保存成功".format(i)) 

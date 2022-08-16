@@ -21,8 +21,8 @@ class Net(nn.Module):
         x = F.relu(x)
         # 二次卷积运算
         x = self.conv2(x)
-        x = self.conv2_drop(x, 2)
-        x = F.max_pool2d(x)
+        x = self.conv2_drop(x)
+        x = F.max_pool2d(x,2)
         x = F.relu(x)
         # 设置数据长度
         x = x.view(-1, 320)
