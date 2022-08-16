@@ -6,6 +6,18 @@
 
 在人工智能领域，手写数字识别被问题转换为自动分类问题。将0~9之内的10个数字分为10类，通过模型训练，实现对数字图片的分类，间接获取数字图片上的手写数字。
 
+该项目所用到的源码以及所有源码均在GitHub以及Gitee上面开源，下载方式：
+
+```shell
+GitHub: 
+git clone https://github.com/guojin-yan/MNIST_demo.git
+
+Gitee:
+git clone https://gitee.com/guojin-yan/MNIST_demo.git
+```
+
+
+
 ## 2. 数据集介绍
 
 MNIST数据集是一个公开手手写数字识别数据集，该数据集由250个不同的人手写而成，总共有7000张手写数据集。其中训练集有6000张，测试集有1000张。每张图片大小为28x28，为处理后的灰度图，是由28x28个像素点组成。
@@ -60,7 +72,7 @@ train_labels = train_labels(9:end);
 fclose(fid);
 ```
 
-如果我们想通过Python实现数据文件读取
+如果我们想通过Python实现数据文件读取，首先导入以下模块：
 
 ```
 import numpy as np
@@ -70,9 +82,7 @@ from PIL import Image
 import os
 ```
 
-
-
-
+下面为训练集图片数据以及标签数据读取方式：
 
 ```python
 # 根目录
@@ -108,7 +118,7 @@ label_datas = struct.unpack_from('>' + label_data_size, label_data_buffer, struc
 label_datas = np.array(label_datas).astype(np.int64)
 ```
 
-
+测试集读取方式类似，如有需要自行修改。
 
 
 
@@ -200,4 +210,51 @@ def test_loader(self):
 import torch.nn as nn
 import torch.nn.functional as F
 ```
+
+我们将网络定义到Net类中，继承``nn.Module`''类模板。在初始化时定义一些在前向传播中所用到的网络层，方便再后面直接使用。
+
+```python
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        '''定义相关的计算层'''
+        # 定义一个卷积核为1×10的卷积层
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+        # 定义一个卷积核为10×20的卷积层
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        # 定义一个二维的Dropout2层，防止模型训练时过拟合
+        self.conv2_drop = nn.Dropout2d()
+        # 定义全连接层
+        self.fc1 = nn.Linear(320, 50)
+        self.fc2 = nn.Linear(50, 10)
+```
+
+
+
+我们在此处模拟网络的前向传播，定义一个简单的网络，有两步卷积运算以及两步全连接组成。卷积运算有卷积->池化->激活三步组成，其中为了防止网络出现过拟合，增加了Dropout层。
+
+```python
+    def forward(self, x):
+        # 一次卷积运算
+        x = self.conv1(x)
+        x = F.max_pool2d(x, 2)
+        x = F.relu(x)
+        # 二次卷积运算
+        x = self.conv2(x)
+        x = self.conv2_drop(x, 2)
+        x = F.max_pool2d(x)
+        x = F.relu(x)
+        # 设置数据长度
+        x = x.view(-1, 320)
+        # 一次全连接
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        # 二次全连接
+        x = self.fc2(x)
+        # 分类模型调用分类结果处理函数
+        return F.log_softmax(x) 
+```
+
+### 4.4 定义训练器
 

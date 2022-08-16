@@ -30,24 +30,25 @@ label_file = os.path.join(home_path, 'MNIST\\raw\\train-labels-idx1-ubyte' )
 label_data_size = 60008
 # 实际标签文件长：60000+8 = 60008
 label_data_size = str(label_data_size - 8) + 'B'
- 
+# 读取过程与读取图片一致
 label_data_buffer = open(label_file, 'rb').read()
 magic, numLabels = struct.unpack_from('>II', label_data_buffer, 0)
 label_datas = struct.unpack_from('>' + label_data_size, label_data_buffer, struct.calcsize('>II'))
 label_datas = np.array(label_datas).astype(np.int64)
- 
-train_path = os.path.join(home_path, 'mnist_train')   # 转换后的训练集所在路径
-if not os.path.exists(train_path):
-    os.mkdir(train_path)
+
+
+'''如果想将图片文件保存到本地，可以运行以下代码'''
+
+# train_path = os.path.join(home_path, 'mnist_train_image')   # 转换后的训练集所在路径
 	
-# 新建 0~9 十个文件夹，存放转换后的图片
-for i in range(10): 
-    file_name = train_path + os.sep + str(i)
-    if not os.path.exists(file_name):
-        os.mkdir(file_name)
+# # 创建 0~9 十个文件夹，存放转换后的图片
+# for i in range(10): 
+#     file_name = train_path + os.sep + str(i)
+#     if not os.path.exists(file_name):
+#         os.mkdir(file_name)
  
-for ii in range(numLabels):
-    img = Image.fromarray(image_datas[ii, 0, 0:28, 0:28])
-    label = label_datas[ii]
-    file_name = train_path + os.sep + str(label) + os.sep + str(ii) + '.png'
-    img.save(file_name)
+# for ii in range(numLabels):
+#     imges = Image.fromarray(image_datas[ii, 0, 0:28, 0:28])
+#     label = label_datas[ii]
+#     file_name = train_path + os.sep + str(label) + os.sep + str(ii) + '.png'
+#     imges.save(file_name)
