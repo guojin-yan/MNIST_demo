@@ -22,19 +22,19 @@ git clone https://gitee.com/guojin-yan/MNIST_demo.git
 
 MNIST数据集是一个公开手手写数字识别数据集，该数据集由250个不同的人手写而成，总共有7000张手写数据集。其中训练集有6000张，测试集有1000张。每张图片大小为28x28，为处理后的灰度图，是由28x28个像素点组成。
 
-![Figure_1](E:\Git_space\手写数字识别\image\Figure_1.png)
+![Figure_1](.\image\Figure_1.png)
 
 上图为手写数字数据集中的部分图片。该数据集可以通过以下路径进行下载：[MNIST](http://yann.lecun.com/exdb/mnist/) (http://yann.lecun.com/exdb/mnist/) ；或者通过各种深度学习框架提供的API函数进行下载。
 
-![image-20220814175037775](E:\Git_space\手写数字识别\image\image-20220814175037775.png)
+![image-20220814175037775](.\image\image-20220814175037775.png)
 
 通过官网下载的方式需要分别下载下图中的四个链接对应的文件，下载完成后，将文件解压到本地即可。
 
-![image-20220814175204076](E:\Git_space\手写数字识别\image\image-20220814175204076.png)
+![image-20220814175204076](.\image\image-20220814175204076.png)
 
 下图为解压好的文件，该文件为处理后的二进制文件，不是现成的图片文件，不可以直接打开，需要进行处理才可以读取，后面会在Matlab训练手写数字识别模型处详细讲解该文件的读取方式。
 
-![image-20220814175308978](E:\Git_space\手写数字识别\image\image-20220814175308978.png)
+![image-20220814175308978](.\image\image-20220814175308978.png)
 
 ## 3. 数据集文件读取
 
@@ -256,7 +256,7 @@ class Net(nn.Module):
 
 以下模型结构图为训练完成的模型转为ONNX模型的结构图。
 
-**![image-20220816213329067](E:\Git_space\手写数字识别\image\image-20220816213329067.png)**
+**![image-20220816213329067](.\image\image-20220816213329067.png)**
 
 
 
