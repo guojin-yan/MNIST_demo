@@ -105,7 +105,7 @@ class Trainer():
             accuracy = total_accuracy / len(test_loader.dataset)
             # 保存结果最好的模型
             if(self.accuracy < accuracy):
-                torch.save(self.network.state_dict(), "best_model.pth".format(i))
+                torch.save(self.network, "best_model.pth".format(i))
                 print("best_model.pth 保存成功")
                 log_text.writelines("best_model.pth 保存成功")
                 log_text.write('\r\n')
@@ -122,8 +122,8 @@ class Trainer():
             total_test_step = total_test_step + 1
 
             # 保存该轮模型
-            torch.save(self.network.state_dict(), "model_{}.pth".format(i))
-            torch.save(self.optimizer.state_dict(), "optimizer_{}.pth".format(i))
+            torch.save(self.network, "model_{}.pth".format(i))
+            # torch.save(self.optimizer.state_dict(), "optimizer_{}.pth".format(i))
             print("第{}轮模型保存成功".format(i+1))
             log_text.writelines("第{}轮模型保存成功".format(i)) 
         print("----------模型训练结束-----------")     
