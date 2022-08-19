@@ -488,3 +488,219 @@ trainer.tarin(epoch = n_epochs, train_loader = train_loader, test_loader = test_
 ```
 
 模型训练完后，模型文件保存到``	Python``文件夹下，日志文件保存到``	Python/logs_train``文件夹下。
+
+
+
+## 5. Matlab深度学习模型训练
+
+### 5.1 构建神经网络
+
+我们首先构建我们训练所使用的网络，Matlab支持可视化构建神经网络，使用起来十分容易。
+
+首先在APP中找到深度网络设计器，进去后新建一个网络文件。
+
+![image-20220819165358385](image\image-20220819165358385.png)
+
+深度网络设计器功能页面如下图所示：
+
+左侧为网络层库，这里包含我们在深度学上常见的所有网络，卷积网络层、序列网络层等，后面在使用的时候直接拖拽到中间的工作区即可。
+
+中间是网络构建区域，在左侧拖拽进来的网络，我们根据顺序将其用连接线连接起来，只需要点住网络层下部输出点拖拽到下一层网络的上部输入点即可。
+
+右侧为网络节层属性设置区域，一些网络层需要修改对应的参数以达到不同的效果。针对不同的网络层需要设置的参数可以查阅Matlab帮助手册。
+
+![image-20220819170031595](image\image-20220819170031595.png)
+
+设计完网络后，点击生成代码，将代码导入到代码区。
+
+![image-20220819170203897](image\image-20220819170203897.png)
+
+将导出的网络copy到``function lgraph = Net()``方法中
+
+![image-20220819185351830](E:\Git_space\手写数字识别\image\image-20220819185351830.png)
+
+下面是封装的一个网络结构生成的方法，可以通过替换``tempLayers``参数，来更换新的网络。
+
+
+```matlab
+function lgraph = Net()
+lgraph = layerGraph();
+tempLayers = [
+%% 第一种网络结构
+
+%     imageInputLayer([28 28 1],"Name","imageinput")
+%     convolution2dLayer([1 10],5,"Name","conv_1","Padding","same")
+%     batchNormalizationLayer
+%     maxPooling2dLayer([2 2],"Name","maxpool_1","Padding","same")
+%     reluLayer("Name","relu_1")
+%     convolution2dLayer([10 20],5,"Name","conv_2","Padding","same")
+%     batchNormalizationLayer
+%     dropoutLayer(0.5,"Name","dropout")
+%     
+%     maxPooling2dLayer([2 2],"Name","maxpool_2","Padding","same")
+%     reluLayer("Name","relu_2")
+%     fullyConnectedLayer(320,"Name","fc_1")
+%     batchNormalizationLayer
+%     fullyConnectedLayer(50,"Name","fc_2")
+%     reluLayer("Name","relu_3")
+%     dropoutLayer(0.5,"Name","dropout_2")
+%     fullyConnectedLayer(10,"Name","fc")
+%     softmaxLayer("Name","softmax")
+%     classificationLayer("Name","classoutput")
+
+%% 第二种网络结构
+
+%     imageInputLayer([28 28 1])
+%     
+%     convolution2dLayer(3,8,'Padding','same')
+%     batchNormalizationLayer
+%     reluLayer
+%     
+%     maxPooling2dLayer(2,'Stride',2)
+%     
+%     convolution2dLayer(3,16,'Padding','same')
+%     batchNormalizationLayer
+%     reluLayer
+%     
+%     maxPooling2dLayer(2,'Stride',2)
+%     
+%     convolution2dLayer(3,32,'Padding','same')
+%     batchNormalizationLayer
+%     reluLayer
+%     
+%     fullyConnectedLayer(10)
+%     softmaxLayer
+%     classificationLayer
+
+%% 第三种网络结构
+
+    imageInputLayer([28 28 1])
+    
+    convolution2dLayer(5,10,"Name","conv_1","Padding","same")
+    batchNormalizationLayer
+    maxPooling2dLayer([2 2],"Name","maxpool_1","Padding","same")
+    reluLayer("Name","relu_1")
+    convolution2dLayer(5,20,"Name","conv_2","Padding","same")
+    batchNormalizationLayer
+    dropoutLayer(0.5,"Name","dropout_1")
+    maxPooling2dLayer([2 2],"Name","maxpool_2","Padding","same")
+    reluLayer("Name","relu_2")
+
+    fullyConnectedLayer(50,"Name","fc_1")
+    reluLayer("Name","relu_3")
+    dropoutLayer(0.5,"Name","dropout_2")
+    fullyConnectedLayer(10,"Name","fc_2")
+    softmaxLayer("Name","softmax")
+    classificationLayer("Name","classoutput")
+    ];
+lgraph = addLayers(lgraph,tempLayers);
+
+% 清理辅助变量
+clear tempLayers;
+
+end
+```
+
+
+
+### 5.2 构建数据读取器
+
+前面我们已经讲过手写数字数据集图片与标签的读取方式，在此处我们构建一个数据集加载方法，将数据集文件读取出来，后面我们在训练时使用。
+
+```matlab
+%% 数据加载器方法
+% 返回
+function [train_X, train_Y,test_X, test_Y] = Dataloader()
+fid = fopen('dataset\t10k-labels-idx1-ubyte', 'rb');
+% 读取测试集标签
+test_labels = fread(fid, inf, 'uint8', 'l');
+test_labels = test_labels(9:end);
+fclose(fid);
+test_Y = categorical(test_labels);
+% 读取训练集标签
+fid = fopen('dataset\train-labels-idx1-ubyte', 'rb');
+train_labels = fread(fid, inf, 'uint8', 'l');
+train_labels = train_labels(9:end);
+fclose(fid);
+train_Y = categorical(train_labels);
+
+% 读取训练集图像数据
+fid = fopen('dataset\train-images-idx3-ubyte', 'rb');
+train_images_data = fread(fid, inf, 'uint8', 'l');
+train_images_data = train_images_data(17:end);
+train_images_data = mapminmax(train_images_data',0,1)';
+fclose(fid);
+train_images = reshape(train_images_data,28,28,60000);
+train_images = permute(train_images,[2 1 3]);
+train_X(:,:,1,:) = train_images;
+
+% 读取测试集图像数据
+fid = fopen('dataset\t10k-images-idx3-ubyte', 'rb');
+test_images_data = fread(fid, inf, 'uint8', 'l');
+test_images_data = test_images_data(17:end);
+fclose(fid);
+test_images = reshape(test_images_data,28,28,10000);
+test_images = permute(test_images,[2 1 3]);
+test_X(:,:,1,:) = test_images;
+end
+```
+
+
+
+### 5.3 网络训练
+
+首先读取数据集，直接调用我们前面构建的数据集读取方法：
+
+```matlab
+%% 获取数据集
+[train_X, train_Y, test_X, test_Y] = Dataloader();
+```
+
+然后读取我们定义的网络
+
+```matlab
+%% 定义网络
+layers = Net();
+```
+
+接下来定义相关的训练参数
+
+```matlab
+%% 设置网络训练配置
+max_epochs = 3; % 训练轮次
+min_batchSize = 8; % 分块尺寸
+options = trainingOptions('adam', ...   % 求解器设定为ADAM，亚当（Adam）是神经网络算法的优化求解器
+    'ExecutionEnvironment','gpu', ...   % 选择运行设备，gpu or cpu
+    'MaxEpochs',max_epochs, ...         % 最大训练周期数
+    'GradientThreshold',1, ...          % 梯度临界点,防止梯度爆炸
+    'InitialLearnRate',0.01, ...       % 初始学习率
+    'LearnRateSchedule','piecewise', ...
+    'MiniBatchSize',min_batchSize, ...  % 分块尺寸
+    'LearnRateDropPeriod',10, ...      % 学习率下降开始次数
+    'LearnRateDropFactor',0.2, ...      % 200轮之后乘以0.2开始降低学习率
+    'Verbose',0, ...
+    'Plots','training-progress' ...     % 绘制训练过程
+    );
+```
+
+最后训练网络
+
+```matlab
+%% 网络训练
+%doTraining = false;
+doTraining = true;
+if doTraining
+    net = trainNetwork(train_X,train_Y,layers,options);
+else
+    load('MNIST_clas.mat','net');
+end
+
+%% 模型保存
+save('MNIST_clas.mat','net')
+```
+
+网络训练开始后，由于我们设置了绘制训练过程，因此会出现训练季度图。该图主要提供给我们了训练过程的准确率以及损失大小，可以及时观察我们网络是否合理以及是否继续训练。
+
+![image-20220819204057193](E:\Git_space\手写数字识别\image\image-20220819204057193.png)
+
+以上就是在 Matlab深度学习模型训练过程
